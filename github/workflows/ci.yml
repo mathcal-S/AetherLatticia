@@ -1,0 +1,38 @@
+name: OmniLingua Genesis CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - name: Install Node dependencies
+        run: npm install
+      - name: Test SelfieToken contract
+        run: npx hardhat test test/SelfieToken.js
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install Python dependencies
+        run: pip install qiskit qiskit-aer numpy scipy matplotlib requests python-dotenv fastapi uvicorn librosa soundfile pyaudio qdrant-client deepface opencv-python
+      - name: Test quantum circuit
+        run: python backend/aethermind.py
+      - name: Test canine analyzer
+        run: python backend/aethermind.py --mode canine
+      - name: Test FastAPI backend
+        run: uvicorn backend.aether_net.app:app --host 0.0.0.0 --port 3000 & sleep 5 && curl -X POST http://localhost:3000/identify -H "Content-Type: application/json" -d '{"image":"test.jpg"}'
+      - name: Deploy to Linea Sepolia
+        env:
+          INFURA_URL: ${{ secrets.INFURA_URL }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+        run: npx hardhat run scripts/termux_deploy.js --network linea_sepolia
